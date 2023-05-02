@@ -17,7 +17,7 @@ class Post(models.Model):
 
 
 class Body(models.Model):
-    post = models.ForeignKey(Post, on_delete=models.CASCADE)
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name='body')
     body = RichTextField()
     is_script = models.BooleanField(default=False)
 

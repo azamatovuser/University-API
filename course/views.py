@@ -37,3 +37,9 @@ class LessonFilesRUDAPIView(generics.RetrieveUpdateDestroyAPIView):
     queryset = LessonFiles.objects.all()
     serializer_class = LessonFilesSerializer
     permission_classes = [IsOwnerOrReadOnly]
+
+
+class CourseLastThreeListAPIView(generics.ListAPIView):
+    #  http://127.0.0.1:8000/blog/list/last_three_courses/
+    queryset = Course.objects.all()[:3]
+    serializer_class = CourseSerializer

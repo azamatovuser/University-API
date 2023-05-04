@@ -29,9 +29,11 @@ class LoginAPIView(APIView):
         if not user.check_password(password):
             raise AuthenticationFailed('Incorrect password')
 
-        payload = {'id': user.id,
-                   'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
-                   'iat': datetime.datetime.utcnow()}
+        payload = {
+            'id': user.id,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
+            'iat': datetime.datetime.utcnow()
+        }
         token = jwt.encode(payload, 'secret', algorithm='HS256')
 
         response = Response()
@@ -45,7 +47,7 @@ class LoginAPIView(APIView):
     
 class ProfileAPIView(APIView):
     def get(self, request):
-        token = request.COOKIES.get('jwt')
+        token = request.GET.get('jwt')
         if not token:
             raise AuthenticationFailed('Unauthenticated!')
         try:

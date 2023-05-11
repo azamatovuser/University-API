@@ -1,6 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 from django.conf import settings
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 def image_path(instance, filename):
@@ -62,3 +63,12 @@ class Profile(AbstractBaseUser):
 
     def has_perm(self, perm, obj=None):
         return self.is_superuser
+
+    @property
+    def tokens(self):
+        refresh = RefreshToken.for_user(self)
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token)
+        }
+        return data

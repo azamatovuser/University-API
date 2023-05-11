@@ -1,59 +1,50 @@
-import requests.cookies
-from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.views import APIView
+from rest_framework import generics, status
 from rest_framework.response import Response
-from .serializers import UserSerializer
+from .serializers import RegisterSerializer, LoginSerializer, AccountUpdateSerializer
 from .models import Profile
-import jwt, datetime
+from .permissions import IsOwnerReadOnly
 
 
-class RegisterAPIView(APIView):
+class RegisterAPIView(generics.GenericAPIView):
     #  http://127.0.0.1:8000/account/register/
+    serializer_class = RegisterSerializer
+
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
+        user = request.data
+        serializer = self.serializer_class(data=user)
         serializer.is_valid(raise_exception=True)
         serializer.save()
-        return Response(serializer.data)
+        return Response({"success": True, 'data': "Account successfully created"}, status=status.HTTP_201_CREATED)
 
 
 class LoginAPIView(APIView):
     #  http://127.0.0.1:8000/account/login/
+    serializer_class = LoginSerializer
+
     def post(self, request):
-        username = request.data['username']
-        password = request.data['password']
-        user = Profile.objects.filter(username=username).first()
-
-        if user is None:
-            raise AuthenticationFailed('User not found!')
-
-        if not user.check_password(password):
-            raise AuthenticationFailed('Incorrect password')
-
-        payload = {
-            'id': user.id,
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=60),
-            'iat': datetime.datetime.utcnow()
-        }
-        token = jwt.encode(payload, 'secret', algorithm='HS256')
-
-        response = Response()
-
-        response.set_cookie(key='jwt', value=token, httponly=True)
-        response.data = {
-            'jwt': token
-        }
-        return response
+        serializer = self.serializer_class(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response({"tokens": serializer.data['tokens']}, status=status.HTTP_200_OK)
     
     
-class ProfileAPIView(APIView):
-    def get(self, request):
-        token = request.GET.get('jwt')
-        if not token:
-            raise AuthenticationFailed('Unauthenticated!')
-        try:
-            payload = jwt.decode(token, 'secret', algorithm=['HS256'])
-        except jwt.ExpiredSignatureError :
-            raise AuthenticationFailed('Unauthenticated!')
-        user = Profile.objects.filter(id=payload['id']).first()
-        serializer = UserSerializer(user)
-        return Response(serializer.data)
+class RUDAPIView(generics.RetrieveUpdateAPIView):
+    serializer_class = AccountUpdateSerializer
+    queryset = Profile.objects.all()
+    permission_classes = [IsOwnerReadOnly]
+
+    def get(self, request, *args, **kwargs):
+        query = self.get_object()
+        if query:
+            serializer = self.serializer_class(query)
+            return Response({"success": True, 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({'success': False, 'message': 'query did not exit'}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, *args, **kwargs):
+        obj = self.get_object()
+        serializer = self.get_serializer(obj, data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({'success': True, 'data': serializer.data}, status=status.HTTP_200_OK)
+        return Response({"success": False, 'message': "credentials is invalid"}, status=status.HTTP_404_NOT_FOUND)
+
